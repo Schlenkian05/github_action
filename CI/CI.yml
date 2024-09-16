@@ -1,0 +1,52 @@
+name: CI with Kind
+
+on:
+  push:
+    branches:
+      - main  # Adjust if your default branch is named differently
+  pull_request:
+    branches:
+      - main  # Adjust if your default branch is named differently
+
+jobs:
+  setup-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: '1.23'  # Specify the Go version required for your project
+
+    - name: Install Kind
+      uses: engineerd/setup-kind@v0.5.0
+      with:
+        version: v0.21.1  # Specify the Kind version you need
+
+    - name: Create Kind cluster
+      run: |
+        kind create cluster --config kind-config.yaml
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v1
+      with:
+        version: '1.28.0'  # Specify the kubectl version needed
+
+    - name: Install Helm
+      run: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+    - name: Deploy to Kind
+      run: |
+        kubectl apply -f k8s/deployment.yaml  # Apply your Kubernetes manifests
+        # Or use Helm to deploy charts:
+        # helm install my-release ./charts/mychart
+
+    - name: Run Go tests
+      run: go test ./...
+
+    - name: Clean up Kind cluster
+      run: kind delete cluster
